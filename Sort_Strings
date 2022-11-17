@@ -1,0 +1,159 @@
+#include <stdio.h>        // fprintf and fscanf
+#include <ctype.h>        // isupper islower
+#include <stdlib.h>
+#define ALLOCLEN 1000000   // amount of available memory
+#define MAXLINES 100      // maximum input strings
+ 
+char *lineptr[MAXLINES];  // array of pointers to strings
+ 
+char allocbuff[ALLOCLEN]; // the buffer where we write
+char *allocptr = allocbuff;  // next available position
+ 
+char *alloc(int n);       // declaration of functions
+int getline(FILE *myfile, FILE *out, char str[], int sym);
+int readnames(FILE *myfile,FILE *out, char *lineptr[], int maxlines);
+void writenames(FILE *out, char *lineptr[],  int nlines);
+int Strcmp(char *s, char *t);
+void Qsort(char *v[], int l, int r);
+void swap (char *v[], int a, int b);
+void Strcpy(char *s, char*t);
+ 
+ 
+FILE *myfile;                               // pointer to files
+FILE *out;
+ 
+int main () {
+    int N, nlines;
+    myfile = fopen("input.txt", "a+");      // open files
+    out = fopen("output.txt", "a+");
+ 
+    fscanf(myfile, "%d\n", &N);
+ 
+ 
+    if (N <= 0 || N > 100){
+        fprintf(out,"Error in the input.txt\n");
+        exit(0);
+    }
+    else if((nlines = readnames(myfile, out, lineptr, MAXLINES)) != N){    // read strings
+        fprintf(out,"Error in the input.txt\n");                            // not enough lines
+        exit(0);
+    }
+    else{                                                                  // if we wrote only N lines = OK -> sort
+        Qsort(lineptr, 0, nlines - 1);
+        writenames(out, lineptr, nlines);
+        fclose(myfile);                                                    // close files
+        fclose(out);
+        return 0;
+    }
+ 
+}
+ 
+#define MAXSIZE_INP 1000                                          // max possible of size of input string
+ 
+int readnames(FILE *myfile, FILE *out, char *lineptr[], int maxlines){ // read all names
+    int len, nlines = 0;
+    char *p, line[MAXSIZE_INP];
+ 
+ 
+    while ((len = getline(myfile, out, line, MAXSIZE_INP)) > 0){  // input string
+         if (nlines > maxlines || (p = alloc(len)) == NULL){      // if there are too many lines or not enough buffer space
+             fprintf(out, "Error in the input.txt\n");
+             exit(0);
+         }
+         else{
+            line[len-1] = '\0';                  // remove the /n end of string
+            Strcpy(p, line);                     // copy to the whole array our input string
+            lineptr[nlines++] = p;               // remember the pointer to this string in another array
+         }
+    }
+    return nlines;
+}
+ 
+void writenames(FILE *out, char *lineptr[],  int nlines){    // out in the file in non-decreasing Lexicographic order
+ 
+    while(nlines-- > 0)
+        fprintf(out, "%s\n", *lineptr++);                    // pointer to name
+ 
+}
+ 
+ 
+int getline(FILE *myfile, FILE *out, char str[], int sym){    // we obtain one line
+    int i = 0, c;
+ 
+    c = fgetc(myfile);
+    if (c == EOF)
+        return 0;
+ 
+    if (isupper(c))                                  // first letter only uppercase
+        str[i++]=c;
+    else{
+        fprintf(out, "Error in the input.txt\n");
+        exit(0);
+    }
+    while (i < sym - 2 && (c = fgetc(myfile)) != EOF && c != '\n'){
+        if (islower(c))                              // After the uppercase, only lowercase letters
+            str[i++] = c;
+        else{
+            fprintf(out, "Error in the input.txt\n"); // we find not a low_letter
+            exit(0);
+        }
+    }
+ 
+    if (c == '\n'){
+        str[i++] = '\n';
+        str[i] = '\0';
+    }
+ 
+   /* if (i - 1 > 100){                          // word greater than 100
+        fprintf(out, "Error in the input.txt\n");
+        exit(0);
+    }*/
+    return i;
+}
+ 
+char *alloc(int n)                             //  returns pointer to n characteers in bufer
+{
+    if (allocbuff + ALLOCLEN - allocptr >= n){
+        allocptr += n;
+        return allocptr - n;
+    }
+    else{                                     // not enough
+        return NULL;
+    }
+}
+ 
+void Qsort(char *v[], int l, int r){
+    if (l >= r)                               // recursion base
+        return;
+ 
+    swap(v, l, (l + r) / 2);
+    int last = l;
+ 
+    for (int i = l + 1;i <= r;i++){
+        if (Strcmp(v[i], v[l]) < 0)           // on the left side, the elements are smaller than the selected one
+            swap(v, i, ++last);
+    }
+    swap(v, last, l);
+    Qsort(v, l, last - 1);                    // recursion
+    Qsort(v, last + 1, r);
+}
+ 
+void swap (char *v[], int a, int b){          // replace 2 elements of array
+    char *temp = v[a];
+    v[a] = v[b];
+    v[b] = temp;
+}
+ 
+void Strcpy(char *s, char*t){               // copy string to another
+    while ((*s++ = *t++) != '\0')
+        ;
+}
+ 
+ 
+int Strcmp(char *s, char *t){              // compare 2 strings s<t (-), s=t (0), s > t(+)
+    for ( ;*s == *t;s++, t++)
+        if (*s == '\0')
+            return 0;
+    return *s - *t;
+    }
+ 
