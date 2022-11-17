@@ -1,0 +1,362 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <string.h>
+
+FILE *myfile;           // pointer to files
+FILE *out;
+int Ind_SUP = 0;        // number/index of super player
+
+typedef struct {        // structure for describing people
+    char name[30];
+    int team;
+    int pow;
+    int vis;
+}Player;
+
+int Strcmp(char *s, char *t);               // declaration of functions
+int getline(FILE *myfile, FILE *out, char str[], int sym, int Stage); // Stage - value depends on what we're reading
+                                                                      // 0 - int, 1 - string, 2 - bool, 3 and 4 - actions
+int find_parametrs(Player people[], char *s, int numplayers);
+void Itoa(int n, char str[]);               // convert int to string
+void print_error();
+
+int main() {
+    //===============================Wizards==========================
+    myfile = fopen("input.txt", "a+");      // open files
+    out = fopen("output.txt", "a+");
+    char **Phrases;                         // array for output srings
+    Phrases = (char**)malloc(10001 * sizeof(char*));
+    for (int i = 0;i < 10001;i++)
+        Phrases[i] = "";
+    int COUN = 0;             // number of output commands
+    char **Wizards;           // main Wizards
+    int *Wizards_Points;      // their points in the end
+
+    char num[200];   // input players
+    char line[1000]; // input actions
+    int len = 0;     // length of command
+
+    getline(myfile, out, num, 10, 0); // we read the first number
+    int NUM = atoi(num);              // NUM = number of teams
+    if (NUM < 1 || NUM >= 11)        // if not satisfy the condition
+        print_error();
+
+    Wizards = (char**)malloc(NUM * sizeof(char*));    // the main wizards
+    Wizards_Points = (int*)malloc(NUM * sizeof(int)); // at the end we sum up the points
+    for (int i = 0;i < NUM;i++)                       // fill it with zeros
+         Wizards_Points[i] = 0;
+
+    int check_size;                                   // checking the size of name
+    for (int i = 0;i < NUM;i++){
+        Wizards[i] = (char*)malloc(25 * sizeof(char));
+        check_size = getline(myfile, out, Wizards[i], 30, 1); // we read the names of main wizards
+        if (check_size > 20 || check_size < 1)               // if not satisfy the condition
+            print_error();
+            }
+ //==================================all players========================================================
+    getline(myfile, out, num, 10, 0);                // we read the number of participating players
+    int Num_teammates = atoi(num);
+    if (Num_teammates > 100 || Num_teammates < NUM) // if not satisfy the condition
+            print_error();
+
+    Player *players;                          // struct with all players
+    players = (Player*)malloc(Num_teammates * sizeof(Player));
+    for (int i = 0;i < Num_teammates;i++){    // fill the struct with data
+            check_size = getline(myfile, out, (players+i)->name, 30, 1);
+            if (check_size > 20 || check_size < 1)    // if not satisfy the condition
+                print_error();
+
+            getline(myfile, out, num, 10, 0);         // team number
+            (players+i)->team = atoi(num);
+            if ((players+i)->team < 0 || (players+i)->team >= NUM)
+                print_error();                        // if not satisfy the condition
+
+            getline(myfile, out, num, 10, 0);         // power
+            (players+i)->pow = atoi(num);
+            if ((players+i)->pow < 0 || (players+i)->pow > 1000)
+                print_error();                        // if not satisfy the condition
+
+            (players+i)->vis = (getline(myfile, out, num, 10, 2) - 1); // visibility
+    }
+//==========================actions====================================================
+int COUNTER = 0; // count input srings
+char n1[50], n2[50];
+     while ((len = getline(myfile, out, line, 1001, 3)) > 0){  // input actions
+       if (++COUNTER > 1000)                                   // count input strings
+            print_error();
+
+       if (Strcmp(line, "attack") == 0){
+            getline(myfile, out, n1, 25, 4); // let's find out what kind of players
+            getline(myfile, out, n2, 25, 4);
+            int i = find_parametrs(players, n1, Num_teammates);
+            int j = find_parametrs(players, n2, Num_teammates);
+            if (i == -1 || j == -1)         // if we didn't find the name
+                print_error();
+
+            if ((players+i)->vis == 0){                 // the first is non-visible
+                Phrases[COUN] = (char*)malloc(50 * sizeof(char));
+                Phrases[COUN++] = "This player can't play\n";
+            }
+            else if ((players+i)->pow == 0){            // the first is frozen: power = 0
+                Phrases[COUN] = (char*)malloc(50 * sizeof(char));
+                Phrases[COUN++] = "This player is frozen\n";
+            }
+            else if ((players+j)->vis == 0)             // the second player is non-visible
+                (players+i)->pow = 0;
+            else if ((players+i)->pow == (players+j)->pow){ // equal powers
+                (players+i)->pow = 0;
+                (players+j)->pow = 0;
+            }
+            else if ((players+i)->pow > (players+j)->pow){
+                (players+i)->pow +=((players+i)->pow - (players+j)->pow);
+                 if ((players+i)->pow > 1000)              // check, 1000 - maximum
+                    (players+i)->pow = 1000;
+                (players+j)->pow = 0;
+            }
+            else if ((players+i)->pow < (players+j)->pow){
+                (players+j)->pow +=((players+j)->pow - (players+i)->pow);
+                if ((players+j)->pow > 1000)               // check, 1000 - maximum
+                    (players+j)->pow = 1000;
+                (players+i)->pow = 0;
+            }}
+       else if (Strcmp(line, "flip_visibility") == 0){ // Сhanging visibility
+        getline(myfile, out, n1, 25, 4);
+        int i = find_parametrs(players, n1, Num_teammates);
+         if (i == -1)                                // if we didn't find the name
+                print_error();
+
+        else if ((players+i)->pow == 0){              // the first is frozen: power = 0
+                Phrases[COUN] = (char*)malloc(50 * sizeof(char));
+                Phrases[COUN++] = "This player is frozen\n";
+            }
+        else
+            (players+i)->vis = (((players+i)->vis) == 1) ? 0: 1; // change the visibility
+       }
+
+       else if (Strcmp(line, "heal") == 0){          // Heal property
+         getline(myfile, out, n1, 25, 4);
+         getline(myfile, out, n2, 25, 4);
+         int i = find_parametrs(players, n1, Num_teammates); // find the names
+         int j = find_parametrs(players, n2, Num_teammates);
+         if (i == -1 || j == -1)                  //if we didn't find the name
+                print_error();
+         if ((players+i)->vis == 0){              // the first is non-visible
+                Phrases[COUN] = (char*)malloc(50 * sizeof(char));
+                Phrases[COUN++] = "This player can't play\n";
+            }
+         else if ((players+i)->pow == 0){         // the first is frozen: power = 0
+                Phrases[COUN] = (char*)malloc(50 * sizeof(char));
+                Phrases[COUN++] = "This player is frozen\n";
+            }
+         else if ((players+i)->team != (players+j)->team){ // different teams
+                Phrases[COUN] = (char*)malloc(50 * sizeof(char));
+                Phrases[COUN++] = "Both players should be from the same team\n";
+            }
+         else if (i == j){                                 // the same player
+                Phrases[COUN] = (char*)malloc(50 * sizeof(char));
+                Phrases[COUN++] = "The player cannot heal itself\n";
+            }
+         else{
+            (players+j)->pow += (((players+i)->pow + 1)/2);
+            if ((players+j)->pow > 1000)                 // check, 1000 - maximum
+                (players+j)->pow = 1000;
+            (players+i)->pow -= (((players+i)->pow) / 2);
+         }
+       }
+        else if (Strcmp(line, "super") == 0){   // combining two players
+            getline(myfile, out, n1, 25, 4);
+            getline(myfile, out, n2, 25, 4);
+            int i = find_parametrs(players, n1, Num_teammates);
+            int j = find_parametrs(players, n2, Num_teammates);
+            if (i == -1 || j == -1)            // if we didn't find the name
+                print_error();
+            if ((players+i)->vis == 0){         // the first is non-visible
+                Phrases[COUN] = (char*)malloc(50 * sizeof(char));
+                Phrases[COUN++] = "This player can't play\n";
+            }
+            else if ((players+i)->pow == 0){    // the first is frozen: power = 0
+                Phrases[COUN] = (char*)malloc(50 * sizeof(char));
+                Phrases[COUN++] = "This player is frozen\n";
+            }
+            else if ((players+i)->team != (players+j)->team){  // different teams
+                Phrases[COUN] = (char*)malloc(50 * sizeof(char));
+                Phrases[COUN++] = "Both players should be from the same team\n";
+            }
+            else if (i == j){                                  // combining with itself
+                Phrases[COUN] = (char*)malloc(50 * sizeof(char));
+                Phrases[COUN++] = "The player cannot do super action with itself\n";
+            }
+            else{
+                (players+i)->pow += ((players+j)->pow);
+                 if ((players+i)->pow > 1000)           // check, 1000 - maximum
+                    (players+i)->pow = 1000;
+                 (players+j)->pow = 0;                  // we create the super player instead of existed player_i
+                 (players+i)->vis = 1;                  // and player_j is deleted
+                 strcpy((players+j)->name, "UNDEFINED");// (players+j)->name = "UNDEFINED"; <- wrong
+                  char Str[10] = "S_";
+                  char Str2[10];                        // in Str we create the name of super player
+                  Itoa(Ind_SUP, Str2);
+                  strcat(Str, Str2);
+                  strcpy((players+i)->name, Str);       // (players+i)->name = Str;<- wrong
+                  Ind_SUP++;
+            }
+        }
+        else{
+            print_error();                             // other commands -> error
+        }
+     }
+//======================OUT=========================================================
+     int pp = 0;
+     while (Phrases[pp] != ""){                // output all lines
+        fprintf(out, "%s", Phrases[pp]);
+        pp++;
+     }
+     int Max_Point = 0;
+     int counter = 0;
+     char Ans[30];
+     for (int i = 0;i < Num_teammates;i++){    // count all points
+        Wizards_Points[(players+i)->team] += ((players+i)->pow);
+     }
+
+     for (int i = 0; i < NUM;i++){             // choosing max value
+       Max_Point = (Wizards_Points[i] >= Max_Point) ? Wizards_Points[i] : Max_Point;
+        }
+     for (int i = 0; i < NUM;i++)             // only one the biggest Wizard
+     {
+         if (Wizards_Points[i] == Max_Point){
+            counter++;
+            strcpy(Ans, Wizards[i]);
+         }
+     }
+     if (counter > 1)   // if many wizards have the same points
+            fprintf(out, "It's a tie\n");
+     else
+        fprintf(out, "The chosen wizard is %s\n", Ans); // else -> our winner
+     fclose(myfile);
+     fclose(out);
+}
+
+int getline(FILE *myfile, FILE *out, char str[], int sym, int Stage){ // input lines
+    int i = 0, c;
+
+    c = fgetc(myfile);
+    if (c == EOF)     // end of file
+        return 0;
+
+    switch (Stage){
+    case 0:         // integer
+        if (isdigit(c))
+            str[i++] = c;
+        else
+            print_error();
+
+        while (i < sym - 2 && (c = fgetc(myfile))!=EOF && c != '\n'){
+            if (isdigit(c))
+                str[i++] = c;
+            else
+                print_error();
+        }
+        if (c == '\n')
+            str[i] = '\0';
+        return i;
+
+    case 1:         // input names
+        if (isupper(c))
+            str[i++] = c;
+         else
+            print_error();
+
+        while (i < sym - 2 && (c = fgetc(myfile))!=EOF && c != '\n'){
+            if (isalpha(c))
+                str[i++] = c;
+            else
+                print_error();
+        }
+        if (c == '\n')
+            str[i] = '\0';
+        return i;
+
+    case 2:        // boolean
+         if (isupper(c))
+            str[i++] = c;
+         else
+            print_error();
+        while (i < sym - 2 && (c = fgetc(myfile))!=EOF && c != '\n'){
+            if (islower(c))
+                str[i++] = c;
+            else
+                print_error();
+        }
+        if (c == '\n')
+            str[i] = '\0';
+        if (Strcmp("True", str) == 0)
+            return 2;
+        else if (Strcmp("False", str) == 0)
+            return 1;
+        else
+            print_error();
+
+    case 3: // actions
+        if (islower(c))
+            str[i++] = c;
+         else
+            print_error();
+
+        while (i < sym - 2 && (c = fgetc(myfile))!=EOF && c != '\n' && c != ' '){
+            if (islower(c) || c=='_')
+                str[i++] = c;
+            else
+                print_error();
+        }
+        if (c == '\n' || c == ' ')
+            str[i] = '\0';
+        return i;
+    case 4: // action names
+        if (isupper(c))
+            str[i++] = c;
+         else
+            print_error();
+
+        while (i < sym - 2 && (c = fgetc(myfile))!=EOF && c != '\n' && c!= ' '){
+            if (isalpha(c) || c == '_' || isdigit(c))
+                str[i++] = c;
+            else
+                print_error();
+        }
+        if (c == '\n' || c == ' ')
+            str[i] = '\0';
+        return i;
+    }}
+
+void print_error(){
+        fprintf(out, "Invalid inputs\n");
+        exit(0);
+}
+
+int Strcmp(char *s, char *t){              // compare 2 strings s<t (-), s=t (0), s > t(+)
+    for ( ;*s == *t;s++, t++)
+        if (*s == '\0')
+            return 0;
+    return *s - *t;
+    }
+
+void Itoa(int n, char str[]){             // converts a number to a string
+    int i = 0, j;
+    do {
+        str[i++] = n % 10 + '0';
+    } while ((n/=10) > 0);
+    str[i] = '\0';
+    for (i = 0, j = strlen(str) - 1;i < j;i++, j--){
+        int tmp = str[i];
+        str[i] = str[j];
+        str[j] = tmp;
+    }}
+
+int find_parametrs(Player people[], char *s, int numplayers){  // searches for specific name in the input 'array' of  names
+    for (int i = 0;i < numplayers;i++){
+        if (Strcmp(people[i].name, s) == 0)
+            return i;
+    }
+    return -1;    // not found
+}
