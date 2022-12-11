@@ -1,0 +1,106 @@
+#include <stdio.h>
+#define NUMBERS 3 // amount of people
+
+typedef enum{
+    Secondary = 1, Bachelor, Master, PhD
+}Degree;
+
+typedef enum{
+    Student = 1, TA, Professor
+}Role;
+
+typedef struct {
+    char name[50];
+    int degree;
+    int role;
+}Moodle_member;
+
+void Qsorting_print(Moodle_member people[], int left, int right);
+char* printRole(Role r);
+char* printDegree(Degree d);
+void printing(Moodle_member people[]);
+void swap (Moodle_member people[], int a, int b);
+
+int main() {
+   Moodle_member people[NUMBERS];
+
+   for (int i = 0;i < NUMBERS;i++){
+   printf("Your name: ");
+   fgets(people[i].name, 50, stdin);
+   printf("If you student - write 1, TA - 2, Professor - 3 : ");
+   scanf("%d", &people[i].role);
+   printf("Choose secondary - 1, Bachelor - 2, "
+          "Master - 3, PhD - 4 : ");
+   scanf("%d", &people[i].degree);
+   getchar();
+   printf("\n");
+   }
+   Qsorting_print(people, 0, NUMBERS - 1);
+   printf("======================OUTPUT=====================\n\n");
+   Printing(people);
+
+}
+
+void Qsorting_print(Moodle_member people[], int left, int right) // sorting of people using structure
+{
+    if (left >= right)          // recursion base
+        return;
+    swap(people, left, (left + right) / 2);
+    int last = left;
+    for (int i = left + 1;i <= right;i++){
+        if (people[i].role < people[left].role)
+            swap(people, i, ++last);
+        else if (people[i].role == people[left].role){
+            if (people[i].degree < people[left].degree)
+                swap(people, i, ++last);
+        }
+    }
+    swap (people, left, last);
+    Qsorting_print(people, left, last - 1);
+    Qsorting_print(people, last + 1, right);
+
+}
+
+
+
+void swap (Moodle_member people[], int a, int b) // changing two persons
+{
+    Moodle_member tmp = people[a];
+    people[a] = people[b];
+    people[b] = tmp;
+
+}
+
+void Printing(Moodle_member people[]){       // out into console
+    for (int i = 0;i < NUMBERS;i++){
+        printf("Name[%d] : %s", i+1, people[i].name);
+        printf("Role: %s\n", printRole((people[i].role)));
+        printf("Degree: %s\n\n", printDegree((people[i].degree)));
+    }
+}
+
+char* printRole(Role r){
+    switch(r){
+        case Student:
+            return "Student";
+        case TA:
+            return "TA";
+        case Professor:
+            return "Professor";
+    }
+
+}
+
+char* printDegree(Degree d){
+    switch(d){
+        case Secondary:
+            return "Secondary";
+        case Bachelor:
+            return "Bachelor";
+        case Master:
+            return "Master";
+        case PhD:
+            return "PhD";
+    }
+
+}
